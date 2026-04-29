@@ -1,0 +1,1156 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEURACLE</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg: #03050b;
+  --light: #f0f3fc;
+  --ink: #08082a;
+  --ink2: rgba(0,0,60,0.3);
+  --accent: rgba(200,220,255,0.7);
+  --purple: #1a1060;
+}
+html, body { width:100%; height:100%; background:var(--bg); overflow:hidden; font-family:'Space Mono',monospace; }
+
+/* ══ TICKER ══ */
+#ticker-bar {
+position:fixed; top:0; left:0; right:0; height:36px; /* aumentado de 28px para 36px */
+background:rgba(255,255,255,0.06);
+border-bottom:1px solid rgba(255,255,255,0.28);
+display:flex; align-items:center; overflow:hidden;
+z-index:1000; backdrop-filter:blur(8px);
+transition: background 0.6s, border-color 0.6s;
+}
+#ticker-bar.light {
+background:rgba(220,225,245,0.95); /* mais escuro no modo light */
+border-bottom:1px solid rgba(0,0,60,0.12);
+}
+.ticker-live {
+font-size:7px; letter-spacing:1.5px; text-transform:uppercase;
+color:#e06000; padding:0 10px; white-space:nowrap;
+border-right:1px solid rgba(255,255,255,0.28); flex-shrink:0;
+}
+#ticker-bar.light .ticker-live { border-right-color:rgba(0,0,60,0.12); }
+.ticker-track { overflow:hidden; flex:1; position:relative; }
+.ticker-inner {
+display:flex; gap:0; white-space:nowrap;
+animation:ticker 12s linear infinite; /* velocidade aumentada: 22s → 12s */
+}
+.ticker-item { font-size:9px; letter-spacing:1px; color:rgba(255,255,255,0.65); padding:0 18px; }
+.ticker-item .sep { color:rgba(255,255,255,0.3); margin:0 8px; }
+#ticker-bar.light .ticker-item { color:rgba(0,0,60,0.75); }
+#ticker-bar.light .ticker-item .sep { color:rgba(0,0,60,0.3); }
+@keyframes ticker { from{transform:translateX(0);} to{transform:translateX(-50%);} }
+
+/* ══ TELA NEURAL ══ */
+#screen-neural {
+position:fixed; inset:0; display:flex;
+align-items:center; justify-content:center;
+z-index:10; transition:opacity 0.8s ease;
+}
+#neural-canvas { position:absolute; inset:0; width:100%; height:100%; }
+
+.neural-logo {
+position:absolute; top:56px; left:50%; transform:translateX(-50%); /* top aumentado por causa do ticker maior */
+font-family:'Cormorant Garamond',serif; font-size:11px; font-weight:300;
+letter-spacing:9px; text-transform:uppercase; color:rgba(255,255,255,0.18);
+z-index:20; animation:fadeIn 2s ease both;
+}
+
+.open-btn {
+position:absolute; bottom:120px; left:50%; transform:translateX(-50%);
+z-index:20; animation:fadeIn 3.5s ease both;
+}
+.open-btn button {
+background:rgba(255,255,255,0.06);
+border:1px solid rgba(255,255,255,0.28);
+color:rgba(255,255,255,0.65);
+font-family:'Space Mono',monospace; font-size:9px;
+letter-spacing:3px; text-transform:uppercase;
+padding:11px 28px; border-radius:30px; cursor:pointer;
+transition:all 0.4s; backdrop-filter:blur(8px);
+box-shadow:0 0 24px rgba(200,220,255,0.05);
+}
+.open-btn button:hover {
+border-color:rgba(255,255,255,0.55); color:rgba(255,255,255,0.95);
+background:rgba(255,255,255,0.1);
+box-shadow:0 0 36px rgba(200,220,255,0.14);
+}
+
+.neural-time {
+position:absolute; bottom:48px; left:50%; transform:translateX(-50%);
+text-align:center; z-index:20; animation:fadeIn 2.5s ease both;
+}
+.neural-clock { font-size:11px; letter-spacing:3px; color:rgba(255,255,255,0.1); margin-bottom:5px; }
+.neural-status { font-size:8px; letter-spacing:2px; color:rgba(255,255,255,0.06); text-transform:uppercase; }
+
+.settings-btn {
+position:absolute; bottom:44px; right:24px;
+width:38px; height:38px; border-radius:50%;
+border:1px solid rgba(255,255,255,0.07);
+background:rgba(255,255,255,0.02);
+display:flex; align-items:center; justify-content:center;
+cursor:pointer; z-index:20; transition:all 0.3s;
+animation:fadeIn 3s ease both;
+}
+.settings-btn:hover { border-color:rgba(255,255,255,0.16); transform:rotate(60deg); }
+.settings-btn svg { width:15px; height:15px; opacity:0.28; }
+
+.keyboard-btn {
+position:absolute; bottom:44px; left:24px;
+width:38px; height:38px; border-radius:50%;
+border:1px solid rgba(255,255,255,0.07);
+background:rgba(255,255,255,0.02);
+display:flex; align-items:center; justify-content:center;
+cursor:pointer; z-index:20; transition:all 0.3s;
+animation:fadeIn 3s ease both;
+}
+.keyboard-btn:hover { border-color:rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); }
+.keyboard-btn svg { width:16px; height:16px; opacity:0.28; }
+
+.keyboard-panel {
+position:fixed; bottom:0; left:0; right:0;
+background:rgba(10,8,32,0.97); backdrop-filter:blur(24px);
+border-top:1px solid rgba(255,255,255,0.1); border-radius:22px 22px 0 0;
+padding:16px 20px 36px; z-index:600;
+display:none; flex-direction:column; gap:12px;
+animation:slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.keyboard-panel.visible { display:flex; }
+@keyframes slideUp { from{transform:translateY(100%);} to{transform:translateY(0);} }
+.kb-bar { display:flex; justify-content:space-between; align-items:center; }
+.kb-label { font-size:8px; letter-spacing:2px; text-transform:uppercase; color:rgba(200,180,255,0.4); }
+.kb-close { font-size:14px; color:rgba(255,255,255,0.25); cursor:pointer; padding:4px; }
+.kb-close:hover { color:rgba(255,255,255,0.6); }
+.kb-input {
+background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+border-radius:10px; padding:10px 14px;
+font-family:'Cormorant Garamond',serif; font-size:16px; font-weight:300;
+color:rgba(255,255,255,0.8); outline:none; caret-color:rgba(200,180,255,0.8);
+}
+.kb-input::placeholder { color:rgba(255,255,255,0.2); }
+.kb-send {
+background:rgba(200,180,255,0.12); border:1px solid rgba(200,180,255,0.2);
+border-radius:10px; padding:9px; text-align:center;
+font-size:9px; letter-spacing:2px; text-transform:uppercase;
+color:rgba(200,180,255,0.6); cursor:pointer; transition:all 0.2s;
+}
+.kb-send:hover { background:rgba(200,180,255,0.22); color:rgba(200,180,255,0.9); }
+
+.scheduled-toast {
+position:fixed; top:44px; left:16px; right:16px; /* top ajustado pelo ticker maior */
+background:linear-gradient(135deg,#0e0c2e,#1c1260);
+border:1px solid rgba(180,150,255,0.2); border-radius:16px;
+padding:12px 16px; z-index:999;
+display:flex; gap:12px; align-items:center;
+box-shadow:0 8px 32px rgba(0,0,0,0.5);
+opacity:0; pointer-events:none;
+transform:translateY(-12px);
+transition:opacity 0.4s ease, transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+.scheduled-toast.show { opacity:1; pointer-events:all; transform:translateY(0); }
+.toast-icon { font-size:20px; flex-shrink:0; }
+.toast-body { flex:1; min-width:0; }
+.toast-title { font-family:'Cormorant Garamond',serif; font-size:15px; font-weight:600; color:rgba(255,255,255,0.9); margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.toast-sub { font-size:7px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(180,150,255,0.5); }
+.toast-actions { display:flex; gap:8px; margin-top:6px; }
+.toast-open { font-size:8px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(180,150,255,0.8); cursor:pointer; padding:4px 10px; border:1px solid rgba(180,150,255,0.25); border-radius:20px; transition:all 0.2s; }
+.toast-open:hover { background:rgba(180,150,255,0.15); color:rgba(180,150,255,1); }
+.toast-dismiss { font-size:8px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,0.2); cursor:pointer; padding:4px 10px; }
+.toast-dismiss:hover { color:rgba(255,255,255,0.5); }
+.toast-close { font-size:14px; color:rgba(255,255,255,0.2); cursor:pointer; padding:0 0 0 4px; flex-shrink:0; align-self:flex-start; }
+.toast-close:hover { color:rgba(255,255,255,0.6); }
+
+/* ══ CÉREBRO MINIATURA ══ */
+#mini-brain {
+position:fixed; bottom:20px; right:20px;
+width:52px; height:52px; z-index:500;
+opacity:0; pointer-events:none;
+transition:opacity 0.6s ease, transform 0.6s cubic-bezier(0.34,1.56,0.64,1);
+transform:scale(0.5);
+}
+#mini-brain.visible { opacity:1; pointer-events:all; transform:scale(1); }
+#mini-brain canvas { width:52px; height:52px; border-radius:50%; }
+.mini-ring {
+position:absolute; inset:-4px; border-radius:50%;
+border:1px solid rgba(200,220,255,0.15);
+animation:miniPulse 2.5s ease-in-out infinite;
+}
+@keyframes miniPulse {
+0%,100%{transform:scale(1);opacity:0.15;}
+50%{transform:scale(1.12);opacity:0.3;}
+}
+
+/* ══ BLOOM WAVE ══ */
+#bloom-wave {
+position:fixed; border-radius:50%;
+background:#d8ddf0; /* ligeiramente mais escuro que f0f3fc */
+transform:scale(0); z-index:100; pointer-events:none;
+transition:none;
+}
+#bloom-wave.expand {
+animation:bloomExpand 0.7s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+@keyframes bloomExpand {
+from { transform:scale(0); opacity:1; }
+to   { transform:scale(80); opacity:1; }
+}
+
+/* ══ TELA CONTEÚDO — CORES MAIS ESCURAS ══ */
+#screen-content {
+position:fixed; inset:0;
+background:#d6daea; /* mais escuro: era #f0f3fc */
+z-index:50; opacity:0; pointer-events:none;
+display:flex; flex-direction:column;
+transition:opacity 0.3s ease 0.4s;
+}
+#screen-content.visible { opacity:1; pointer-events:all; }
+
+/* Tab bar */
+.tab-bar {
+display:flex; background:#d6daea; /* igual ao fundo da tela */
+padding:56px 20px 0; gap:0;
+border-bottom:1px solid rgba(0,0,60,0.12); /* borda ligeiramente mais visível */
+flex-shrink:0; position:relative;
+}
+.back-btn {
+position:absolute; top:60px; left:14px;
+width:36px; height:36px; border-radius:50%;
+background:rgba(0,0,0,0.08); border:none; cursor:pointer;
+font-size:16px; display:flex; align-items:center; justify-content:center;
+transition:all 0.2s; color:rgba(0,0,60,0.55);
+z-index:5;
+}
+.back-btn:hover { background:rgba(0,0,0,0.13); }
+.tab {
+padding:10px 18px 12px; font-size:9px; letter-spacing:1.5px;
+text-transform:uppercase; color:rgba(0,0,60,0.38); cursor:pointer;
+border-bottom:2px solid transparent; transition:all 0.2s;
+position:relative; bottom:-1px;
+}
+.tab:first-of-type { margin-left:44px; }
+.tab.active { color:#1a1060; border-bottom-color:#1a1060; }
+
+.tab-content { flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; }
+.tab-panel { display:none; padding-bottom:100px; animation:panelIn 0.4s ease both; }
+.tab-panel.active { display:block; }
+@keyframes panelIn { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
+
+/* ── BRIEFING — cores mais escuras ── */
+.brief-top {
+padding:26px 22px 20px;
+background:linear-gradient(180deg,#c8ceea 0%,#d6daea 100%); /* mais escuro */
+}
+.brief-logo-sm {
+font-family:'Cormorant Garamond',serif; font-size:9px; font-weight:300;
+letter-spacing:7px; text-transform:uppercase; color:rgba(0,0,60,0.28); margin-bottom:14px;
+}
+.brief-greeting {
+font-family:'Cormorant Garamond',serif; font-size:36px; font-weight:300;
+color:#08082a; line-height:1.15; margin-bottom:7px;
+}
+.brief-greeting strong { font-weight:600; }
+.brief-date { font-size:9px; letter-spacing:1px; color:rgba(0,0,60,0.38); }
+
+.ai-block {
+margin:16px 18px 14px;
+background:linear-gradient(135deg,#0e0c2e,#1c1260);
+border-radius:20px; padding:20px; color:white; position:relative; overflow:hidden;
+}
+.ai-block::after {
+content:''; position:absolute; top:-40px; right:-40px;
+width:130px; height:130px;
+background:radial-gradient(circle,rgba(180,150,255,0.15),transparent 70%);
+border-radius:50%;
+}
+.ai-label {
+font-size:7px; letter-spacing:2.5px; text-transform:uppercase;
+color:rgba(190,160,255,0.5); margin-bottom:10px;
+display:flex; align-items:center; gap:8px;
+}
+.ai-label::after { content:'CLAUDE SONNET'; font-size:7px; color:rgba(190,160,255,0.28); letter-spacing:1.5px; }
+.ai-text {
+font-family:'Cormorant Garamond',serif; font-size:17px; font-weight:300;
+line-height:1.65; color:rgba(255,255,255,0.8);
+}
+.ai-text em { color:#c8aaff; font-style:normal; font-weight:600; }
+
+.sec-title {
+padding:16px 22px 8px; font-size:8px; letter-spacing:2.5px;
+text-transform:uppercase; color:rgba(0,0,60,0.3); /* um pouco mais visível */
+display:flex; align-items:center; gap:10px;
+}
+.sec-title::after { content:''; flex:1; height:1px; background:rgba(0,0,60,0.1); }
+
+/* Cards com fundo mais escuro */
+.news-card {
+margin:0 18px 10px; background:#eaecf5; border-radius:16px; /* era white */
+padding:14px; display:flex; gap:12px; cursor:pointer;
+transition:all 0.22s; border:1px solid rgba(0,0,60,0.08);
+box-shadow:0 2px 12px rgba(0,0,60,0.07);
+}
+.news-card:hover { transform:translateY(-2px); box-shadow:0 6px 22px rgba(0,0,60,0.13); }
+.nc-icon { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.ic-blue{background:#dce2f5;} .ic-purple{background:#e4dcf5;} .ic-green{background:#d8f5e4;} .ic-amber{background:#f5eddc;}
+.nc-body { flex:1; }
+.nc-tag { font-size:8px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(0,0,60,0.35); margin-bottom:5px; }
+.nc-headline { font-family:'Cormorant Garamond',serif; font-size:15px; font-weight:600; color:#08082a; line-height:1.35; margin-bottom:4px; }
+.nc-meta { font-size:9px; color:rgba(0,0,60,0.3); display:flex; gap:7px; }
+
+.channels-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin:0 18px; }
+.ch-card {
+background:#eaecf5; border-radius:16px; padding:14px; cursor:pointer; /* era white */
+transition:all 0.2s; border:1px solid rgba(0,0,60,0.08);
+box-shadow:0 2px 8px rgba(0,0,60,0.06); position:relative;
+}
+.ch-card:hover { transform:translateY(-2px); box-shadow:0 5px 16px rgba(0,0,60,0.11); }
+.ch-dot { position:absolute; top:11px; right:11px; width:6px; height:6px; background:#ff4f4f; border-radius:50%; box-shadow:0 0 6px rgba(255,79,79,0.6); }
+.ch-icon { font-size:24px; margin-bottom:7px; }
+.ch-name { font-family:'Cormorant Garamond',serif; font-size:14px; font-weight:600; color:#08082a; margin-bottom:2px; }
+.ch-count { font-size:9px; color:rgba(0,0,60,0.32); }
+
+/* ── NOTAS ── */
+.notes-panel { padding:26px 18px; display:flex; flex-direction:column; gap:0; }
+.notes-title { font-family:'Cormorant Garamond',serif; font-size:32px; font-weight:300; color:#08082a; margin-bottom:4px; }
+.notes-sub { font-size:9px; letter-spacing:1.5px; color:rgba(0,0,60,0.36); text-transform:uppercase; margin-bottom:22px; }
+
+.voice-area {
+background:linear-gradient(135deg,#0e0c2e,#1c1260);
+border-radius:22px; padding:28px 22px;
+display:flex; flex-direction:column; align-items:center; gap:18px;
+margin-bottom:18px; position:relative; overflow:hidden;
+}
+.voice-area::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 80% 60% at 50% 100%,rgba(150,100,255,0.1),transparent); }
+.voice-label { font-size:8px; letter-spacing:2px; text-transform:uppercase; color:rgba(200,180,255,0.35); z-index:1; }
+.mic-btn {
+width:70px; height:70px; border-radius:50%;
+background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,255,255,0.14);
+display:flex; align-items:center; justify-content:center;
+cursor:pointer; transition:all 0.3s; z-index:1;
+}
+.mic-btn:hover { background:rgba(255,255,255,0.09); border-color:rgba(255,255,255,0.28); box-shadow:0 0 30px rgba(180,140,255,0.18); }
+.mic-btn.recording { background:rgba(255,80,80,0.14); border-color:rgba(255,80,80,0.38); animation:micPulse 1s ease-in-out infinite; }
+@keyframes micPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,80,80,0.28);} 50%{box-shadow:0 0 0 18px rgba(255,80,80,0);} }
+.mic-btn svg { width:28px; height:28px; }
+.voice-hint { font-size:9px; letter-spacing:1px; color:rgba(255,255,255,0.18); text-align:center; z-index:1; line-height:1.6; }
+.voice-transcript { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 16px; min-height:48px; width:100%; z-index:1; display:none; }
+.voice-transcript.visible { display:block; }
+.transcript-text { font-family:'Cormorant Garamond',serif; font-size:16px; font-weight:300; color:rgba(255,255,255,0.72); line-height:1.5; }
+.transcript-cursor { display:inline-block; width:2px; height:14px; background:rgba(200,180,255,0.65); margin-left:2px; vertical-align:middle; animation:blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+.note-page {
+background:#eaecf5; border-radius:16px; padding:18px; margin-bottom:12px; /* era white */
+border:1px solid rgba(0,0,60,0.08); box-shadow:0 2px 10px rgba(0,0,60,0.06);
+cursor:pointer; transition:all 0.2s;
+}
+.note-page:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,60,0.1); }
+.note-page-date { font-size:8px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(0,0,60,0.28); margin-bottom:8px; }
+.note-page-text { font-family:'Cormorant Garamond',serif; font-size:16px; font-weight:300; color:#1a1a3a; line-height:1.55; }
+.note-page-lines { margin-top:8px; display:flex; flex-direction:column; gap:5px; }
+.note-line { height:1px; background:rgba(0,0,60,0.08); border-radius:1px; }
+
+.new-page-btn {
+display:flex; align-items:center; justify-content:center; gap:10px; padding:14px;
+border:1.5px dashed rgba(0,0,60,0.15); border-radius:14px; cursor:pointer;
+transition:all 0.2s; color:rgba(0,0,60,0.32); font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+margin-bottom:12px;
+}
+.new-page-btn:hover { border-color:rgba(0,0,60,0.28); color:rgba(0,0,60,0.52); background:rgba(0,0,0,0.02); }
+
+.brief-footer { text-align:center; padding:24px 20px 12px; font-size:8px; letter-spacing:2px; color:rgba(0,0,60,0.15); }
+.brief-footer span { color:rgba(100,60,200,0.35); }
+
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+/* ══ ONBOARDING ══ */
+#screen-onboarding {
+position:fixed; inset:0; background:var(--bg);
+z-index:200; display:none; flex-direction:column;
+align-items:center; justify-content:flex-end;
+padding-bottom:40px;
+}
+#screen-onboarding.visible { display:flex; }
+
+.ob-canvas-wrap {
+position:absolute; inset:0; display:flex;
+align-items:center; justify-content:center; pointer-events:none;
+}
+#ob-canvas { width:200px; height:200px; opacity:0.7; }
+
+.ob-dialog {
+width:100%; max-width:400px; padding:0 24px;
+display:flex; flex-direction:column; gap:16px; z-index:10;
+}
+.ob-bubble {
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.1);
+border-radius:18px; padding:16px 20px;
+font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:300;
+color:rgba(255,255,255,0.8); line-height:1.55;
+animation:bubbleIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+backdrop-filter:blur(10px);
+}
+.ob-bubble.neura {
+background:linear-gradient(135deg,rgba(20,15,60,0.8),rgba(30,18,100,0.8));
+border-color:rgba(180,150,255,0.15);
+color:rgba(255,255,255,0.78);
+align-self:flex-start; max-width:88%;
+}
+.ob-bubble.user {
+background:rgba(255,255,255,0.07);
+border-color:rgba(255,255,255,0.12);
+align-self:flex-end; max-width:88%;
+text-align:right;
+}
+@keyframes bubbleIn { from{opacity:0;transform:translateY(16px) scale(0.96);} to{opacity:1;transform:none;} }
+
+.ob-input-row {
+display:flex; gap:10px; align-items:center;
+background:rgba(255,255,255,0.04);
+border:1px solid rgba(255,255,255,0.1);
+border-radius:30px; padding:10px 16px;
+backdrop-filter:blur(10px);
+}
+.ob-input {
+flex:1; background:none; border:none; outline:none;
+font-family:'Cormorant Garamond',serif; font-size:17px; font-weight:300;
+color:rgba(255,255,255,0.8); caret-color:rgba(200,180,255,0.8);
+}
+.ob-input::placeholder { color:rgba(255,255,255,0.2); }
+.ob-send {
+width:36px; height:36px; border-radius:50%;
+background:rgba(200,180,255,0.15); border:1px solid rgba(200,180,255,0.2);
+display:flex; align-items:center; justify-content:center;
+cursor:pointer; transition:all 0.2s; flex-shrink:0;
+}
+.ob-send:hover { background:rgba(200,180,255,0.25); }
+.ob-send svg { width:16px; height:16px; }
+.ob-skip {
+text-align:center; font-size:9px; letter-spacing:2px;
+text-transform:uppercase; color:rgba(255,255,255,0.12);
+cursor:pointer; margin-top:4px; transition:color 0.2s;
+}
+.ob-skip:hover { color:rgba(255,255,255,0.3); }
+
+.typing-dots { display:flex; gap:5px; padding:4px 0; }
+.typing-dots span {
+width:5px; height:5px; border-radius:50%;
+background:rgba(200,180,255,0.5);
+animation:dotBounce 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay:0.2s; }
+.typing-dots span:nth-child(3) { animation-delay:0.4s; }
+@keyframes dotBounce { 0%,80%,100%{transform:translateY(0);opacity:0.4;} 40%{transform:translateY(-6px);opacity:1;} }
+</style>
+
+</head>
+<body>
+
+<div id="ticker-bar">
+  <div class="ticker-live">⚡ ao vivo</div>
+  <div class="ticker-track">
+    <div class="ticker-inner" id="ticker-inner"></div>
+  </div>
+</div>
+
+<div id="bloom-wave"></div>
+
+<div class="scheduled-toast" id="scheduled-toast">
+  <div class="toast-icon" id="toast-icon">📺</div>
+  <div class="toast-body">
+    <div class="toast-title" id="toast-title">Revista Oeste</div>
+    <div class="toast-sub" id="toast-sub">YouTube · Horário programado</div>
+    <div class="toast-actions">
+      <div class="toast-open" onclick="openScheduled()">Abrir agora</div>
+      <div class="toast-dismiss" onclick="dismissToast()">Agora não</div>
+    </div>
+  </div>
+  <div class="toast-close" onclick="dismissToast()">✕</div>
+</div>
+
+<div id="screen-neural">
+  <canvas id="neural-canvas"></canvas>
+  <div class="neural-logo">Neuracle</div>
+
+  <div class="open-btn">
+    <button onclick="openContent('briefing')">Ver meu briefing</button>
+  </div>
+
+  <div class="keyboard-btn" id="keyboardBtn" onclick="toggleKeyboard()" title="Teclado">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2"/>
+      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8M6 10h.01"/>
+    </svg>
+  </div>
+
+  <div class="keyboard-panel" id="keyboardPanel">
+    <div class="kb-bar">
+      <div class="kb-label">Comando</div>
+      <div class="kb-close" onclick="toggleKeyboard()">✕</div>
+    </div>
+    <input class="kb-input" id="kb-input" placeholder="Digite um comando ou nota…" autocomplete="off" />
+    <div class="kb-send" onclick="sendKeyboardCmd()">Enviar</div>
+  </div>
+
+  <div class="settings-btn" onclick="startOnboarding()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </div>
+
+  <div class="neural-time">
+    <div class="neural-clock" id="clock">--:--</div>
+    <div class="neural-status" id="neural-status-txt">Ativo · Monitorando</div>
+  </div>
+</div>
+
+<div id="mini-brain">
+  <div class="mini-ring"></div>
+  <canvas id="mini-canvas" width="52" height="52"></canvas>
+</div>
+
+<div id="screen-content">
+  <div class="tab-bar">
+    <button class="back-btn" onclick="closeContent()">←</button>
+    <div class="tab active" onclick="switchTab('briefing',this)">Briefing</div>
+    <div class="tab" onclick="switchTab('notas',this)">Notas</div>
+  </div>
+
+  <div class="tab-content">
+
+    <div class="tab-panel active" id="panel-briefing">
+      <div class="brief-top">
+        <div class="brief-logo-sm">Neuracle</div>
+        <div class="brief-greeting">Boa tarde,<br><strong id="user-name-display">Cleyr.</strong></div>
+        <div class="brief-date" id="brief-date-display">—</div>
+      </div>
+      <div class="ai-block">
+        <div class="ai-label">✦ Resumo inteligente</div>
+        <div class="ai-text">O dia foi dominado por <em>avanços históricos em IA</em>. Anthropic acelera. OpenAI responde. <em>Momento decisivo</em> para quem constrói o futuro agora.</div>
+      </div>
+      <div class="sec-title">Inteligência Artificial</div>
+      <div class="news-card">
+        <div class="nc-icon ic-blue">🤖</div>
+        <div class="nc-body">
+          <div class="nc-tag">Anthropic · há 2h</div>
+          <div class="nc-headline">Claude avança em raciocínio e visão com novo modelo</div>
+          <div class="nc-meta"><span>4 min</span><span>·</span><span>TechCrunch</span></div>
+        </div>
+      </div>
+      <div class="news-card">
+        <div class="nc-icon ic-purple">🧠</div>
+        <div class="nc-body">
+          <div class="nc-tag">OpenAI · há 5h</div>
+          <div class="nc-headline">GPT-5 promete raciocínio em tempo real e memória contínua</div>
+          <div class="nc-meta"><span>3 min</span><span>·</span><span>The Verge</span></div>
+        </div>
+      </div>
+      <div class="news-card">
+        <div class="nc-icon ic-green">📱</div>
+        <div class="nc-body">
+          <div class="nc-tag">Apple · há 8h</div>
+          <div class="nc-headline">iPhone 17 terá IA generativa nativa sem depender de nuvem</div>
+          <div class="nc-meta"><span>2 min</span><span>·</span><span>Canaltech</span></div>
+        </div>
+      </div>
+      <div class="news-card">
+        <div class="nc-icon ic-amber">💰</div>
+        <div class="nc-body">
+          <div class="nc-tag">Mercado · há 1h</div>
+          <div class="nc-headline">Dólar recua para R$5,68 com dados positivos da balança comercial</div>
+          <div class="nc-meta"><span>2 min</span><span>·</span><span>InfoMoney</span></div>
+        </div>
+      </div>
+      <div class="sec-title">Seus Canais</div>
+      <div class="channels-grid">
+        <div class="ch-card"><div class="ch-dot"></div><div class="ch-icon">📺</div><div class="ch-name">YouTube</div><div class="ch-count">3 novos vídeos</div></div>
+        <div class="ch-card"><div class="ch-icon">🗞️</div><div class="ch-name">Tech News</div><div class="ch-count">12 artigos</div></div>
+        <div class="ch-card"><div class="ch-dot"></div><div class="ch-icon">📊</div><div class="ch-name">Mercado</div><div class="ch-count">5 alertas</div></div>
+        <div class="ch-card"><div class="ch-icon">🎙️</div><div class="ch-name">Podcasts</div><div class="ch-count">2 episódios</div></div>
+      </div>
+      <div class="brief-footer">NEURACLE · POWERED BY <span>CLAUDE SONNET</span> · © 2026</div>
+    </div>
+
+    <div class="tab-panel" id="panel-notas">
+      <div class="notes-panel">
+        <div class="notes-title">Notas</div>
+        <div class="notes-sub">Fale · Neuracle escreve</div>
+        <div class="voice-area">
+          <div class="voice-label">Nova nota por voz</div>
+          <div class="mic-btn" id="micBtn" onclick="toggleRecording()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </div>
+          <div class="voice-transcript" id="voiceTranscript">
+            <div class="transcript-text" id="transcriptText"></div>
+            <span class="transcript-cursor"></span>
+          </div>
+          <div class="voice-hint" id="voiceHint">Toque no microfone<br>e fale sua nota</div>
+        </div>
+        <div class="sec-title">Páginas salvas</div>
+        <div class="note-page">
+          <div class="note-page-date">20 Abr 2026 · 09h14</div>
+          <div class="note-page-text">Neuracle — registrar domínio .com.br hoje. Começar pelo curador de informação.</div>
+          <div class="note-page-lines"><div class="note-line"></div><div class="note-line" style="width:70%"></div></div>
+        </div>
+        <div class="note-page">
+          <div class="note-page-date">19 Abr 2026 · 11h18</div>
+          <div class="note-page-text">Nome vem de Neural + Oracle + Cleyr. Powered by Claude Sonnet. Interface com ser neural pulsando no ritmo do coração.</div>
+          <div class="note-page-lines"><div class="note-line"></div><div class="note-line" style="width:55%"></div></div>
+        </div>
+        <div class="new-page-btn" onclick="newNotePage()"><span>+</span><span>Nova página</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="screen-onboarding">
+  <div class="ob-canvas-wrap">
+    <canvas id="ob-canvas" width="200" height="200"></canvas>
+  </div>
+  <div class="ob-dialog" id="ob-dialog"></div>
+  <div class="ob-skip" onclick="skipOnboarding()">pular configuração</div>
+</div>
+
+<script>
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = h + ':' + m;
+}
+const days = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function setDate() {
+  const now = new Date();
+  const txt = `${days[now.getDay()]} · ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} · 12 novidades`;
+  document.getElementById('brief-date-display').textContent = txt;
+}
+updateClock(); setDate();
+setInterval(updateClock, 10000);
+
+const tickerItems = [
+  'USD/BRL R$5,68 ▼0,4%', 'EUR/BRL R$6,12 ▲0,2%',
+  'IBOV 134.280 ▲0,8%', 'BTC $94.200 ▲1,2%',
+  'Apple anuncia IA nativa no iPhone 17',
+  'Anthropic lança novo modelo com raciocínio avançado',
+  'OpenAI revela planos para próxima geração',
+  'Mercado de IA ultrapassa US$500 bilhões',
+  'Petróleo WTI US$82,40 ▼0,3%',
+  'S&P 500 5.240 ▲0,5%',
+];
+function buildTicker() {
+  const inner = document.getElementById('ticker-inner');
+  const all = [...tickerItems, ...tickerItems];
+  inner.innerHTML = all.map(t =>
+    `<span class="ticker-item">${t}<span class="sep">·</span></span>`
+  ).join('');
+}
+buildTicker();
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+function openContent(type) {
+  const wave = document.getElementById('bloom-wave');
+  const W = window.innerWidth, H = window.innerHeight;
+  const sz = 60;
+  wave.style.cssText = `
+    width:${sz}px; height:${sz}px;
+    left:${W/2 - sz/2}px; top:${H/2 - sz/2}px;
+    border-radius:50%; position:fixed;
+    background:#d8ddf0; transform:scale(0);
+    z-index:100; pointer-events:none;
+  `;
+  wave.classList.add('expand');
+  document.getElementById('ticker-bar').classList.add('light');
+  setTimeout(() => {
+    const neural = document.getElementById('screen-neural');
+    neural.style.opacity = '0';
+    neural.style.pointerEvents = 'none';
+    const content = document.getElementById('screen-content');
+    content.classList.add('visible');
+    if(type === 'notas') {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab')[1].classList.add('active');
+      document.getElementById('panel-notas').classList.add('active');
+    } else {
+      document.querySelectorAll('.tab')[0].classList.add('active');
+      document.getElementById('panel-briefing').classList.add('active');
+    }
+    showMiniBrain();
+  }, 480);
+  setTimeout(() => {
+    wave.classList.remove('expand');
+    wave.style.transform = 'scale(0)';
+  }, 900);
+}
+
+function closeContent() {
+  const content = document.getElementById('screen-content');
+  const neural = document.getElementById('screen-neural');
+  content.style.transition = 'opacity 0.35s ease';
+  content.style.opacity = '0';
+  document.getElementById('ticker-bar').classList.remove('light');
+  hideMiniBrain();
+  setTimeout(() => {
+    content.classList.remove('visible');
+    content.style.opacity = '';
+    content.style.transition = '';
+    neural.style.opacity = '1';
+    neural.style.pointerEvents = 'all';
+  }, 350);
+}
+
+let miniT = 0, miniRAF = null;
+function showMiniBrain() {
+  const mb = document.getElementById('mini-brain');
+  mb.classList.add('visible');
+  drawMiniBrain();
+}
+function hideMiniBrain() {
+  const mb = document.getElementById('mini-brain');
+  mb.classList.remove('visible');
+  if(miniRAF) { cancelAnimationFrame(miniRAF); miniRAF = null; }
+}
+function drawMiniBrain() {
+  const c = document.getElementById('mini-canvas');
+  const ctx = c.getContext('2d');
+  const S = 52, cx = 26, cy = 26;
+  miniT++;
+  ctx.clearRect(0, 0, S, S);
+  ctx.beginPath(); ctx.arc(cx, cy, 26, 0, Math.PI*2);
+  ctx.fillStyle = '#0a0820'; ctx.fill();
+  const hb = 1 + Math.exp(-Math.pow(((miniT%80)/80 - 0.1)/0.04, 2))*0.18;
+  const r = 14 * hb;
+  for(let i=0;i<10;i++) {
+    const a = (i/10)*Math.PI*2 + miniT*0.008;
+    const x = cx + Math.cos(a)*r;
+    const y = cy + Math.sin(a)*r*0.85;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y);
+    ctx.strokeStyle = `rgba(200,220,255,${0.08*hb})`; ctx.lineWidth=0.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x,y,1.2,0,Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${0.6*hb})`; ctx.fill();
+  }
+  const cg = ctx.createRadialGradient(cx,cy,0,cx,cy,8*hb);
+  cg.addColorStop(0,`rgba(255,255,255,${0.9*hb})`);
+  cg.addColorStop(0.5,`rgba(200,220,255,0.3)`);
+  cg.addColorStop(1,'transparent');
+  ctx.beginPath(); ctx.arc(cx,cy,8*hb,0,Math.PI*2);
+  ctx.fillStyle=cg; ctx.fill();
+  miniRAF = requestAnimationFrame(drawMiniBrain);
+}
+
+let recognition = null, isRecording = false, savedText = '';
+function toggleRecording() {
+  if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    simulateVoice(); return;
+  }
+  isRecording ? stopRecording() : startRecordingNote();
+}
+function startRecordingNote() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'pt-BR'; recognition.continuous = true; recognition.interimResults = true;
+  recognition.onstart = () => {
+    isRecording = true;
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('voiceHint').textContent = 'Ouvindo… toque para salvar';
+    document.getElementById('voiceTranscript').classList.add('visible');
+  };
+  recognition.onresult = (e) => {
+    let interim = '', final = '';
+    for(let i=e.resultIndex;i<e.results.length;i++) {
+      if(e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    savedText += final;
+    document.getElementById('transcriptText').textContent = savedText + interim;
+  };
+  recognition.onerror = () => stopRecording();
+  recognition.start();
+}
+function stopRecording() {
+  if(recognition) recognition.stop();
+  isRecording = false;
+  document.getElementById('micBtn').classList.remove('recording');
+  if(savedText.trim()) {
+    document.getElementById('voiceHint').textContent = '✓ Nota salva';
+    setTimeout(() => {
+      saveNote(savedText.trim());
+      savedText = '';
+      document.getElementById('transcriptText').textContent = '';
+      document.getElementById('voiceTranscript').classList.remove('visible');
+      document.getElementById('voiceHint').textContent = 'Toque no microfone\ne fale sua nota';
+    }, 1200);
+  } else {
+    document.getElementById('voiceHint').textContent = 'Toque no microfone\ne fale sua nota';
+  }
+}
+function simulateVoice() {
+  const demos = ['Registrar o domínio neuracle.com.br ainda hoje.','Interface neural pulsa como coração.','Onboarding conversacional — Neura aprende a rotina.'];
+  const text = demos[Math.floor(Math.random()*demos.length)];
+  document.getElementById('voiceTranscript').classList.add('visible');
+  document.getElementById('micBtn').classList.add('recording');
+  document.getElementById('voiceHint').textContent = 'Simulando voz...';
+  let i=0;
+  const iv = setInterval(() => {
+    i++;
+    document.getElementById('transcriptText').textContent = text.slice(0,i*3);
+    if(i*3>=text.length) {
+      clearInterval(iv);
+      setTimeout(() => {
+        saveNote(text);
+        document.getElementById('micBtn').classList.remove('recording');
+        document.getElementById('transcriptText').textContent = '';
+        document.getElementById('voiceTranscript').classList.remove('visible');
+        document.getElementById('voiceHint').textContent = 'Toque no microfone\ne fale sua nota';
+      }, 900);
+    }
+  }, 40);
+}
+function saveNote(text) {
+  const now = new Date();
+  const d = now.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) +
+    ' · ' + String(now.getHours()).padStart(2,'0') + 'h' + String(now.getMinutes()).padStart(2,'0');
+  const note = document.createElement('div');
+  note.className = 'note-page';
+  note.style.animation = 'panelIn 0.4s ease both';
+  note.innerHTML = `<div class="note-page-date">${d}</div><div class="note-page-text">${text}</div><div class="note-page-lines"><div class="note-line"></div><div class="note-line" style="width:${50+Math.random()*38}%"></div></div>`;
+  document.querySelector('.new-page-btn').before(note);
+}
+function newNotePage() {}
+
+const userData = { name:'', city:'', interests:[], wakeTime:'', job:'' };
+const obSteps = [
+  { field:'name',     neura:'Olá. Eu sou a Neura.\nComo posso te chamar?',              placeholder:'Seu nome…',                   process: v => { userData.name = v; document.getElementById('user-name-display').textContent = v + '.'; return `Prazer, ${v}. Vou aprender sua rotina para cuidar de tudo por você.`; } },
+  { field:'city',     neura:'Em qual cidade você está?',                                 placeholder:'Cidade…',                     process: v => { userData.city = v; return `${v}. Perfeito. Vou monitorar clima, trânsito e notícias locais de lá.`; } },
+  { field:'job',      neura:'Qual é a sua principal atividade ou profissão?',            placeholder:'Ex: empreendedor…',           process: v => { userData.job = v; return `Entendido. Vou priorizar informações relevantes para ${v}.`; } },
+  { field:'wakeTime', neura:'Que horas você costuma acordar?',                           placeholder:'Ex: 6h30…',                   process: v => { userData.wakeTime = v; return `Às ${v} seu briefing matinal vai estar pronto, antes mesmo de você pegar o celular.`; } },
+  { field:'interests',neura:'Quais temas você quer acompanhar? (separe por vírgulas)',   placeholder:'Ex: IA, mercado, tecnologia…', process: v => { userData.interests = v.split(',').map(s=>s.trim()); return `Ótimo. Vou filtrar o mundo por esses temas para você.`; } },
+];
+let obStep = 0;
+function startOnboarding() {
+  obStep = 0;
+  const ob = document.getElementById('screen-onboarding');
+  ob.classList.add('visible');
+  document.getElementById('ob-dialog').innerHTML = '';
+  setTimeout(() => showObStep(), 400);
+  startObCanvas();
+}
+function skipOnboarding() {
+  document.getElementById('screen-onboarding').classList.remove('visible');
+  stopObCanvas();
+}
+function showObStep() {
+  if(obStep >= obSteps.length) { finishOnboarding(); return; }
+  const step = obSteps[obStep];
+  addNeuraBubble(step.neura, step.placeholder);
+}
+function addNeuraBubble(text, placeholder) {
+  const dialog = document.getElementById('ob-dialog');
+  const dots = document.createElement('div');
+  dots.className = 'ob-bubble neura';
+  dots.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  dialog.appendChild(dots);
+  dialog.scrollTop = dialog.scrollHeight;
+  setTimeout(() => {
+    dots.style.transition = 'opacity 0.3s';
+    dots.style.opacity = '0';
+    setTimeout(() => {
+      dots.remove();
+      const bubble = document.createElement('div');
+      bubble.className = 'ob-bubble neura';
+      bubble.style.whiteSpace = 'pre-line';
+      bubble.textContent = text;
+      dialog.appendChild(bubble);
+      const row = document.createElement('div');
+      row.className = 'ob-input-row';
+      row.id = 'ob-input-row';
+      row.innerHTML = `
+        <input class="ob-input" id="ob-input" placeholder="${placeholder}" autocomplete="off" />
+        <div class="ob-send" onclick="submitOb()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </div>
+      `;
+      dialog.appendChild(row);
+      dialog.scrollTop = dialog.scrollHeight;
+      const inp = document.getElementById('ob-input');
+      inp.focus();
+      inp.addEventListener('keydown', e => { if(e.key==='Enter') submitOb(); });
+    }, 300);
+  }, 900);
+}
+function submitOb() {
+  const inp = document.getElementById('ob-input');
+  const val = inp.value.trim();
+  if(!val) return;
+  const dialog = document.getElementById('ob-dialog');
+  const row = document.getElementById('ob-input-row');
+  if(row) row.remove();
+  const ub = document.createElement('div');
+  ub.className = 'ob-bubble user';
+  ub.textContent = val;
+  dialog.appendChild(ub);
+  dialog.scrollTop = dialog.scrollHeight;
+  const step = obSteps[obStep];
+  const reply = step.process(val);
+  obStep++;
+  setTimeout(() => {
+    if(obStep >= obSteps.length) {
+      const fb = document.createElement('div');
+      fb.className = 'ob-bubble neura';
+      fb.style.whiteSpace = 'pre-line';
+      fb.textContent = reply + '\n\nTudo pronto. Sou sua Neura.';
+      dialog.appendChild(fb);
+      dialog.scrollTop = dialog.scrollHeight;
+      setTimeout(finishOnboarding, 2200);
+    } else {
+      const rb = document.createElement('div');
+      rb.className = 'ob-bubble neura';
+      rb.style.whiteSpace = 'pre-line';
+      rb.textContent = reply;
+      dialog.appendChild(rb);
+      dialog.scrollTop = dialog.scrollHeight;
+      setTimeout(showObStep, 800);
+    }
+  }, 600);
+}
+function finishOnboarding() {
+  const ob = document.getElementById('screen-onboarding');
+  ob.style.transition = 'opacity 0.6s ease';
+  ob.style.opacity = '0';
+  setTimeout(() => {
+    ob.classList.remove('visible');
+    ob.style.opacity = '';
+    ob.style.transition = '';
+    stopObCanvas();
+  }, 600);
+}
+
+let obT = 0, obRAF = null;
+function startObCanvas() { drawObCanvas(); }
+function stopObCanvas() { if(obRAF) { cancelAnimationFrame(obRAF); obRAF = null; } }
+function drawObCanvas() {
+  const c = document.getElementById('ob-canvas');
+  const ctx = c.getContext('2d');
+  const S=200, cx=100, cy=100;
+  obT++;
+  ctx.clearRect(0,0,S,S);
+  const hb = 1+Math.exp(-Math.pow(((obT%90)/90-0.1)/0.04,2))*0.2;
+  const maxR = 60*hb;
+  for(let i=0;i<4;i++) {
+    const rf=0.3+i*0.2, wave=Math.sin(obT*0.01+i*1.2)*0.5+0.5;
+    ctx.beginPath(); ctx.arc(cx,cy,maxR*rf,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(200,220,255,${0.05*wave})`; ctx.lineWidth=0.8; ctx.stroke();
+  }
+  for(let i=0;i<16;i++) {
+    const a=(i/16)*Math.PI*2+obT*0.005;
+    const r=(i%2===0?maxR*0.55:maxR*0.85);
+    const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r*0.88;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y);
+    ctx.strokeStyle=`rgba(200,220,255,${0.06*hb})`; ctx.lineWidth=0.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x,y,1.5,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${0.55*hb})`; ctx.fill();
+  }
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,16*hb);
+  cg.addColorStop(0,`rgba(255,255,255,${0.95*hb})`);
+  cg.addColorStop(0.5,`rgba(200,220,255,0.4)`);
+  cg.addColorStop(1,'transparent');
+  ctx.beginPath(); ctx.arc(cx,cy,16*hb,0,Math.PI*2); ctx.fillStyle=cg; ctx.fill();
+  obRAF = requestAnimationFrame(drawObCanvas);
+}
+
+const canvas = document.getElementById('neural-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, ncx, ncy, t=0, nodes=[], pulses=[], pulseTimer=0;
+
+function heartbeat(time) {
+  const period = (60/55)*60;
+  const phase = (time%period)/period;
+  const lub = Math.exp(-Math.pow((phase-0.1)/0.04,2));
+  const dub = Math.exp(-Math.pow((phase-0.2)/0.03,2))*0.6;
+  return 1+(lub+dub)*0.22;
+}
+function resize() {
+  W=canvas.width=window.innerWidth;
+  H=canvas.height=window.innerHeight;
+  ncx=W/2; ncy=H/2;
+  buildNodes();
+}
+function buildNodes() {
+  nodes=[];
+  const maxR=Math.min(W,H)*0.33;
+  const layers=[
+    {n:1,r:0,speed:0,sz:3.1},{n:10,r:maxR*0.18,speed:0.005,sz:2.4},
+    {n:18,r:maxR*0.35,speed:-0.004,sz:2.0},{n:24,r:maxR*0.52,speed:0.003,sz:1.6},
+    {n:32,r:maxR*0.68,speed:-0.002,sz:1.3},{n:40,r:maxR*0.82,speed:0.0015,sz:1.1},
+    {n:48,r:maxR*0.95,speed:-0.001,sz:0.9},{n:54,r:maxR*1.08,speed:0.0008,sz:0.7},
+  ];
+  layers.forEach(l => {
+    for(let i=0;i<l.n;i++) {
+      const a=(i/l.n)*Math.PI*2+Math.random()*0.3;
+      nodes.push({baseAngle:a,r:l.r+(Math.random()-0.5)*l.r*0.15,speed:l.speed*(0.8+Math.random()*0.4),sz:l.sz+Math.random()*0.6,pulseOff:Math.random()*Math.PI*2,bright:0.4+Math.random()*0.6});
+    }
+  });
+}
+function pos(n,time) {
+  const a=n.baseAngle+n.speed*time;
+  const hb=heartbeat(time);
+  return {x:ncx+Math.cos(a)*n.r*hb, y:ncy+Math.sin(a)*n.r*hb*0.9};
+}
+function dist(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);}
+function draw() {
+  ctx.clearRect(0,0,W,H);
+  t++; pulseTimer++;
+  const hb=heartbeat(t);
+  const maxR=Math.min(W,H)*0.30;
+  const positions=nodes.map(n=>pos(n,t));
+  const atm=ctx.createRadialGradient(ncx,ncy,0,ncx,ncy,maxR*1.3);
+  atm.addColorStop(0,`rgba(220,235,255,${0.025*hb*3})`);
+  atm.addColorStop(0.5,`rgba(200,220,255,${0.025*hb})`);
+  atm.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(ncx,ncy,maxR*1.3,0,Math.PI*2);ctx.fillStyle=atm;ctx.fill();
+  [0.18,0.35,0.52,0.68,0.82,0.95].forEach((rf,i)=>{
+    const r=maxR*rf*hb, wave=Math.sin(t*0.008+i*1.1)*0.5+0.5;
+    ctx.beginPath();ctx.arc(ncx,ncy,r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(200,220,255,${0.04*wave})`;ctx.lineWidth=0.5;ctx.stroke();
+  });
+  const coreR=24*hb;
+  const cg=ctx.createRadialGradient(ncx,ncy,0,ncx,ncy,coreR*3.5);
+  cg.addColorStop(0,`rgba(255,255,255,${Math.min(1, 1.1*(hb-0.8)*5)})`);
+  cg.addColorStop(0.3,`rgba(230,242,255,${0.55*hb})`);
+  cg.addColorStop(0.6,`rgba(200,220,255,${0.25*hb})`);
+  cg.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(ncx,ncy,coreR*3.5,0,Math.PI*2);ctx.fillStyle=cg;ctx.fill();
+  ctx.beginPath();ctx.arc(ncx,ncy,5.5*hb,0,Math.PI*2);
+  ctx.fillStyle=`rgba(255,255,255,${Math.min(1,hb)})`;ctx.fill();
+  const maxDist=maxR*0.55;
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      const d=dist(positions[i],positions[j]);
+      if(d<maxDist){
+        ctx.beginPath();ctx.moveTo(positions[i].x,positions[i].y);ctx.lineTo(positions[j].x,positions[j].y);
+        ctx.strokeStyle=`rgba(210,228,255,${(1-d/maxDist)*0.1*nodes[i].bright*hb})`;ctx.lineWidth=0.4;ctx.stroke();
+      }
+    }
+    const d2=dist(positions[i],{x:ncx,y:ncy});
+    if(d2<maxR*0.9){
+      ctx.beginPath();ctx.moveTo(ncx,ncy);ctx.lineTo(positions[i].x,positions[i].y);
+      ctx.strokeStyle=`rgba(230,240,255,${(1-d2/(maxR*0.9))*0.06*nodes[i].bright*hb})`;ctx.lineWidth=0.3;ctx.stroke();
+    }
+  }
+  nodes.forEach((n,i)=>{
+    const p=positions[i];
+    const pSz=n.sz*(0.88+0.12*Math.sin(t*0.03+n.pulseOff))*hb;
+    const br=n.bright*Math.min(hb,1.15);
+    const halo=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,pSz*4);
+    halo.addColorStop(0,`rgba(210,228,255,${0.12*br})`);halo.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(p.x,p.y,pSz*4,0,Math.PI*2);ctx.fillStyle=halo;ctx.fill();
+    ctx.beginPath();ctx.arc(p.x,p.y,pSz,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${br*0.88})`;ctx.fill();
+  });
+  if(pulseTimer%40===0){
+    const a=nodes[Math.floor(Math.random()*nodes.length)];
+    const b=nodes[Math.floor(Math.random()*nodes.length)];
+    if(a!==b) pulses.push({a,b,p:0,sp:0.015+Math.random()*0.01});
+  }
+  pulses=pulses.filter(p=>p.p<1);
+  pulses.forEach(p=>{
+    p.p+=p.sp;
+    const pa=pos(p.a,t),pb=pos(p.b,t);
+    const x=pa.x+(pb.x-pa.x)*p.p,y=pa.y+(pb.y-pa.y)*p.p;
+    const g=ctx.createRadialGradient(x,y,0,x,y,5);
+    g.addColorStop(0,`rgba(255,255,255,${0.75*(1-p.p)*hb})`);g.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+  });
+  requestAnimationFrame(draw);
+}
+window.addEventListener('resize',resize);
+resize(); draw();
+
+function toggleKeyboard() {
+  const panel = document.getElementById('keyboardPanel');
+  panel.classList.toggle('visible');
+  if(panel.classList.contains('visible')) {
+    setTimeout(() => document.getElementById('kb-input').focus(), 100);
+  }
+}
+function sendKeyboardCmd() {
+  const inp = document.getElementById('kb-input');
+  const val = inp.value.trim();
+  if(!val) return;
+  inp.value = '';
+  toggleKeyboard();
+  saveNote(val);
+  openContent('notas');
+}
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') {
+    const panel = document.getElementById('keyboardPanel');
+    if(panel.classList.contains('visible')) panel.classList.remove('visible');
+  }
+});
+
+const scheduledItems = [
+  { hour:19, minute:0,  icon:'📺', title:'Revista Oeste',    sub:'YouTube · Horário programado', panel:'briefing', autoOpen:false },
+  { hour:7,  minute:0,  icon:'☀️', title:'Briefing Matinal', sub:'Resumo do dia · Horário programado', panel:'briefing', autoOpen:true },
+  { hour:12, minute:30, icon:'📊', title:'Mercado',          sub:'Alerta de abertura · Horário programado', panel:'briefing', autoOpen:false },
+];
+let currentScheduled = null;
+let toastTimeout = null;
+function checkSchedule() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  for(const item of scheduledItems) {
+    if(item.hour === h && item.minute === m) {
+      if(item.autoOpen) { openContent(item.panel); }
+      else { showScheduledToast(item); }
+      break;
+    }
+  }
+}
+function showScheduledToast(item) {
+  currentScheduled = item;
+  document.getElementById('toast-icon').textContent = item.icon;
+  document.getElementById('toast-title').textContent = item.title;
+  document.getElementById('toast-sub').textContent = item.sub;
+  const toast = document.getElementById('scheduled-toast');
+  toast.classList.add('show');
+  if(toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(dismissToast, 10000);
+}
+function dismissToast() {
+  document.getElementById('scheduled-toast').classList.remove('show');
+  if(toastTimeout) clearTimeout(toastTimeout);
+}
+function openScheduled() {
+  dismissToast();
+  if(currentScheduled) openContent(currentScheduled.panel);
+}
+setInterval(checkSchedule, 60000);
+setTimeout(() => { showScheduledToast(scheduledItems[0]); }, 4000);
+</script>
+
+</body>
+</html>
